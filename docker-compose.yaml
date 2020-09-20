@@ -1,0 +1,29 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:11.2-alpine
+    container_name: postgres
+    restart: always
+    ports:
+      - 54321:5432
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: parser
+    volumes:
+      - ./docker/postgres:/var/lib/postgresql/data
+
+  app:
+    container_name: app
+    build: .
+    restart: unless-stopped
+    ports:
+      - 8083:8080
+
+  migrate:
+    container_name: migrate
+    image: migrate/migrate
+    restart: on-failure
+    volumes:
+      - ./migrations:/migrations
+    command: ["-path", "/migrations", "-database",  "postgres://root:root@postgres:5432/parser?sslmode=disable", "up"]
