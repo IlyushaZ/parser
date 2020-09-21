@@ -2,7 +2,13 @@
 This application allows you to parse and aggregate news from multiple websites according to passed patterns.
 
 ### Getting started
-- `make run`
+With docker-compose: `make`
+Without docker:
+- install postgresql
+- install [migrating tool](https://github.com/golang-migrate/migrate)
+- run ```migrate -database 'postgresql://mylogin:mypassword@localhost:5432/mydbname?sslmode=disable' -path ./migrations up```
+with your credentials
+- run ```go build -o ./parser && ./parser -dbURL 'postgresql://mylogin:mypassword@localhost:5432/mydbname?sslmode=disable'```
 
 ### Endpoints
 - Add website to be parsed: ```POST: localhost:8083/websites``` with ```application/json``` body:
