@@ -2,19 +2,39 @@ package processors
 
 import (
 	"github.com/gocolly/colly"
+	"net/url"
 	"regexp"
+	"strings"
 )
 
-func ScrapLinks(url, urlPattern string) (links []string) {
+func ScrapLinks(mainLink, linkPattern string) (links []string) {
 	c := colly.NewCollector()
+	entries := make(map[string]int)
+
 	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		match, _ := regexp.MatchString(urlPattern, e.Attr("href"))
-		if match {
-			links = append(links, e.Attr("href"))
+		raw := e.Attr("href")
+		match, _ := regexp.MatchString(linkPattern, raw)
+
+		if !match {
+			return
 		}
+
+		u, err := url.Parse(raw)
+		if err != nil {
+			return
+		}
+
+		u.RawQuery = ""
+		entries[u.String()] += 1
 	})
 
-	c.Visit(url)
+	c.Visit(mainLink)
+
+	for l := range entries {
+		if entries[l] == 1 {
+			links = append(links, l)
+		}
+	}
 
 	return
 }
@@ -23,11 +43,11 @@ func ScrapNews(url, titlePattern, textPattern string) (title, text string) {
 	c := colly.NewCollector()
 
 	c.OnHTML(titlePattern, func(e *colly.HTMLElement) {
-		title = e.Text
+		title += strings.TrimSpace(e.Text)
 	})
 
 	c.OnHTML(textPattern, func(e *colly.HTMLElement) {
-		text = e.Text
+		text += strings.TrimSpace(e.Text)
 	})
 
 	c.Visit(url)

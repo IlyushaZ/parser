@@ -14,6 +14,15 @@ This application allows you to parse and aggregate news from multiple websites a
   "text_pattern": "div.post__body"
 }
 ```
+or
+```
+{
+  "main_url": "https://rbc.ru",
+  "url_pattern": "https://www.rbc.ru/society/[0-9]{2}/[0-9]{2}/[0-9]{4}/[a-f0-9]{24}",
+  "title_pattern": "h1.article__header__title-in ",
+  "text_pattern": "div.article__text__overview"
+}
+```
 where ```main_url``` is URL of main page of the website to be parsed, ```url_pattern``` is regexp for URL 
 of news page on the website, ```title_pattern``` and ```text_pattern``` are HTML paths to elements containing
  title and text of news.

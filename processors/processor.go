@@ -8,7 +8,7 @@ import (
 
 type Task struct {
 	url, titlePattern, textPattern string
-	newsID                         int
+	websiteID                      int
 }
 
 type Processor struct {
@@ -29,14 +29,17 @@ func (p Processor) ProcessWebsites(tasks chan<- Task) {
 		time.Sleep(1 * time.Minute)
 	}
 
+	task := Task{}
 	for i := range websites {
-		task := Task{
-			titlePattern: websites[i].TitlePattern,
-			textPattern:  websites[i].TextPattern,
-			newsID:       websites[i].ID,
-		}
+		task.titlePattern = websites[i].TitlePattern
+		task.textPattern = websites[i].TextPattern
+		task.websiteID = websites[i].ID
 
 		for _, l := range ScrapLinks(websites[i].MainURL, websites[i].URLPattern) {
+			if p.newsRepo.NewsExists(l) {
+				continue
+			}
+
 			task.url = l
 			tasks <- task
 		}
@@ -48,12 +51,8 @@ func (p Processor) ProcessWebsites(tasks chan<- Task) {
 
 func (p Processor) ProcessNews(tasks <-chan Task) {
 	for t := range tasks {
-		if p.newsRepo.NewsExists(t.url) {
-			continue
-		}
-
 		title, text := ScrapNews(t.url, t.titlePattern, t.textPattern)
-		news := models.NewNews(t.newsID, t.url, title, text)
+		news := models.NewNews(t.websiteID, t.url, title, text)
 		p.newsRepo.Insert(news)
 	}
 }

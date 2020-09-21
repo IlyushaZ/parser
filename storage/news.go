@@ -1,9 +1,9 @@
 package storage
 
 import (
-	"fmt"
 	"github.com/IlyushaZ/parser/models"
 	"github.com/jmoiron/sqlx"
+	"log"
 	"strconv"
 )
 
@@ -25,9 +25,8 @@ func NewNewsRepository(db *sqlx.DB) NewsRepository {
 func (nr newsRepository) NewsExists(url string) bool {
 	const stmt = "SELECT EXISTS(SELECT 1 FROM news WHERE url = $1)"
 	var exists bool
-	err := nr.db.QueryRow(stmt, url).Scan(&exists)
-	if err != nil {
-		fmt.Println(err)
+	if err := nr.db.QueryRow(stmt, url).Scan(&exists); err != nil {
+		log.Println("storage: error checking if news exists: " + err.Error())
 	}
 
 	return exists
@@ -37,7 +36,11 @@ func (nr newsRepository) Get(limit, offset int) []models.News {
 	result := make([]models.News, 0, limit)
 	stmt := "SELECT * FROM news LIMIT " + strconv.Itoa(limit) + " OFFSET " + strconv.Itoa(offset)
 
-	rows, _ := nr.db.Queryx(stmt)
+	rows, err := nr.db.Queryx(stmt)
+	if err != nil {
+		log.Println("storage: error selecting news: " + err.Error())
+	}
+
 	var news models.News
 	for rows.Next() {
 		rows.StructScan(&news)
@@ -53,7 +56,8 @@ func (nr newsRepository) SearchByTitle(search string) []models.News {
 
 	rows, err := nr.db.Queryx(stmt, "%"+search+"%")
 	if err != nil {
-		fmt.Println(err)
+		log.Println("storage: error searching by title: " + err.Error())
+		return result
 	}
 
 	var news models.News
@@ -70,7 +74,7 @@ func (nr newsRepository) Insert(news models.News) error {
 	_, err := nr.db.Exec(stmt, news.WebsiteID, news.URL, news.Title, news.Text)
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println("error inserting news: " + err.Error())
 	}
 	return err
 }
