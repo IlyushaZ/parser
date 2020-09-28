@@ -25,10 +25,10 @@ func ScrapLinks(mainLink, linkPattern string) (links []string) {
 		}
 
 		u.RawQuery = ""
-		entries[u.String()] += 1
+		entries[u.String()]++
 	})
 
-	c.Visit(mainLink)
+	_ = c.Visit(mainLink)
 
 	for l := range entries {
 		if entries[l] == 1 {
@@ -50,6 +50,6 @@ func ScrapNews(url, titlePattern, textPattern string) (title, text string) {
 		text += strings.TrimSpace(e.Text)
 	})
 
-	c.Visit(url)
+	_ = c.Visit(url)
 	return
 }

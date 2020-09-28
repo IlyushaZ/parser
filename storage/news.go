@@ -3,78 +3,92 @@ package storage
 import (
 	"github.com/IlyushaZ/parser/models"
 	"github.com/jmoiron/sqlx"
-	"log"
+	"github.com/pkg/errors"
 	"strconv"
 )
 
-type NewsRepository interface {
-	NewsExists(url string) bool
-	Get(limit, offset int) []models.News
-	SearchByTitle(search string) []models.News
-	Insert(news models.News) error
-}
-
-type newsRepository struct {
+type NewsRepository struct {
 	db *sqlx.DB
 }
 
 func NewNewsRepository(db *sqlx.DB) NewsRepository {
-	return newsRepository{db: db}
+	return NewsRepository{db: db}
 }
 
-func (nr newsRepository) NewsExists(url string) bool {
+func (nr NewsRepository) NewsExists(url string) (exists bool, err error) {
 	const stmt = "SELECT EXISTS(SELECT 1 FROM news WHERE url = $1)"
-	var exists bool
-	if err := nr.db.QueryRow(stmt, url).Scan(&exists); err != nil {
-		log.Println("storage: error checking if news exists: " + err.Error())
+
+	err = nr.db.QueryRow(stmt, url).Scan(&exists)
+	if err != nil {
+		err = errors.WithMessage(err, "news storage: err checking if news exists with url "+url)
 	}
 
-	return exists
+	return
 }
 
-func (nr newsRepository) Get(limit, offset int) []models.News {
-	result := make([]models.News, 0, limit)
+func (nr NewsRepository) Get(limit, offset int) (result []models.News, err error) {
+	result = make([]models.News, 0, limit)
 	stmt := "SELECT * FROM news LIMIT " + strconv.Itoa(limit) + " OFFSET " + strconv.Itoa(offset)
 
 	rows, err := nr.db.Queryx(stmt)
 	if err != nil {
-		log.Println("storage: error selecting news: " + err.Error())
+		err = errors.WithMessage(err, "news storage: err selecting list of news")
+		return
 	}
 
 	var news models.News
 	for rows.Next() {
-		rows.StructScan(&news)
+		_ = rows.StructScan(&news)
 		result = append(result, news)
 	}
 
-	return result
+	if rows.Err() != nil {
+		err = errors.WithMessage(
+			err,
+			"news storage: err scanning news from db to struct while getting list of news",
+		)
+	}
+
+	return
 }
 
-func (nr newsRepository) SearchByTitle(search string) []models.News {
+func (nr NewsRepository) SearchByTitle(search string) (result []models.News, err error) {
 	const stmt = "SELECT * FROM news WHERE title LIKE $1"
-	result := make([]models.News, 0)
+	result = make([]models.News, 0)
 
 	rows, err := nr.db.Queryx(stmt, "%"+search+"%")
 	if err != nil {
-		log.Println("storage: error searching by title: " + err.Error())
-		return result
+		err = errors.WithMessage(err, "news storage: err searching news by title "+search)
+		return
 	}
 
 	var news models.News
 	for rows.Next() {
-		rows.StructScan(&news)
+		_ = rows.StructScan(&news)
 		result = append(result, news)
 	}
 
-	return result
+	if rows.Err() != nil {
+		err = errors.WithMessage(
+			err,
+			"news storage: err scanning news from db to struct while searching "+search,
+		)
+	}
+
+	return
 }
 
-func (nr newsRepository) Insert(news models.News) error {
+func (nr NewsRepository) Insert(news models.News) error {
 	const stmt = "INSERT INTO news (website_id, url, title, text) VALUES ($1, $2, $3, $4)"
 	_, err := nr.db.Exec(stmt, news.WebsiteID, news.URL, news.Title, news.Text)
 
 	if err != nil {
-		log.Println("error inserting news: " + err.Error())
+		err = errors.WithMessagef(
+			err, "news storage: err inserting news for website %d with url %s",
+			news.WebsiteID,
+			news.URL,
+		)
 	}
+
 	return err
 }

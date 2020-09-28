@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"errors"
 	"github.com/IlyushaZ/parser/models"
-	"github.com/IlyushaZ/parser/storage"
 	"github.com/mailru/easyjson"
+	"github.com/pkg/errors"
+	"log"
 	"net/http"
 	"net/url"
 )
@@ -14,6 +14,10 @@ var (
 	errInvalidURL = errors.New("given url is invalid")
 )
 
+type WebsiteRepository interface {
+	Insert(website models.Website) error
+}
+
 //easyjson:json
 type body struct {
 	MainURL      string `json:"main_url"`
@@ -22,11 +26,12 @@ type body struct {
 	TextPattern  string `json:"text_pattern"`
 }
 
+//easyjson:skip
 type WebsiteHandler struct {
-	repo storage.WebsiteRepository
+	repo WebsiteRepository
 }
 
-func NewWebsiteHandler(repo storage.WebsiteRepository) WebsiteHandler {
+func NewWebsiteHandler(repo WebsiteRepository) WebsiteHandler {
 	return WebsiteHandler{repo: repo}
 }
 
@@ -49,12 +54,12 @@ func (h WebsiteHandler) HandlePostWebsite(w http.ResponseWriter, r *http.Request
 
 	model := models.NewWebsite(reqBody.MainURL, reqBody.URLPattern, reqBody.TitlePattern, reqBody.TextPattern)
 	if err := h.repo.Insert(model); err != nil {
+		log.Println(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	return
 }
 
 func validateRequest(body body) error {

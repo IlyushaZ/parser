@@ -1,26 +1,28 @@
 package handlers
 
 import (
+	"fmt"
 	"github.com/IlyushaZ/parser/models"
-	"github.com/IlyushaZ/parser/storage"
 	"github.com/mailru/easyjson"
+	"log"
 	"net/http"
 	"strconv"
 )
 
+type NewsRepository interface {
+	Get(limit, offset int) ([]models.News, error)
+	SearchByTitle(title string) ([]models.News, error)
+}
+
 //easyjson:json
 type newsArr []models.News
 
-//easyjson:json
-type getResponseBody struct {
-	News newsArr `json:"news"`
-}
-
+//easyjson:skip
 type NewsHandler struct {
-	repo storage.NewsRepository
+	repo NewsRepository
 }
 
-func NewNewsHandler(repo storage.NewsRepository) NewsHandler {
+func NewNewsHandler(repo NewsRepository) NewsHandler {
 	return NewsHandler{repo: repo}
 }
 
@@ -49,14 +51,17 @@ func (h NewsHandler) HandleGetNews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := easyjson.Marshal(newsArr(h.repo.Get(limit, offset)))
+	news, err := h.repo.Get(limit, offset)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	result, _ := easyjson.Marshal(newsArr(news))
+
 	w.WriteHeader(http.StatusOK)
-	w.Write(result)
+	_, _ = w.Write(result)
 }
 
 func (h NewsHandler) HandleSearchNews(w http.ResponseWriter, r *http.Request) {
@@ -71,12 +76,15 @@ func (h NewsHandler) HandleSearchNews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := easyjson.Marshal(newsArr(h.repo.SearchByTitle(query[0])))
+	news, err := h.repo.SearchByTitle(query[0])
 	if err != nil {
+		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	result, _ := easyjson.Marshal(newsArr(news))
+
 	w.WriteHeader(http.StatusOK)
-	w.Write(result)
+	_, _ = w.Write(result)
 }
