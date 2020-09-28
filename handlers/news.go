@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"github.com/IlyushaZ/parser/models"
 	"github.com/mailru/easyjson"
 	"log"
@@ -78,7 +77,7 @@ func (h NewsHandler) HandleSearchNews(w http.ResponseWriter, r *http.Request) {
 
 	news, err := h.repo.SearchByTitle(query[0])
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
