@@ -2,3 +2,4 @@
 parser
 docker
 test.json
+.golangci.yml

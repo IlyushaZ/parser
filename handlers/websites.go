@@ -15,7 +15,7 @@ var (
 )
 
 type WebsiteRepository interface {
-	Insert(website models.Website) error
+	Insert(website *models.Website) error
 }
 
 //easyjson:json
@@ -53,7 +53,7 @@ func (h WebsiteHandler) HandlePostWebsite(w http.ResponseWriter, r *http.Request
 	}
 
 	model := models.NewWebsite(reqBody.MainURL, reqBody.URLPattern, reqBody.TitlePattern, reqBody.TextPattern)
-	if err := h.repo.Insert(model); err != nil {
+	if err := h.repo.Insert(&model); err != nil {
 		log.Println(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return

@@ -6,6 +6,10 @@ run:
 build:
 	go build -o parser main.go
 
+.PHONY: escape-analysis
+escape-analysis:
+	go build -gcflags "-m -m"
+
 .PHONY: compose
 compose:
 	docker-compose up -d

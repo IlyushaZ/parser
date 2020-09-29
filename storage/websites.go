@@ -40,7 +40,7 @@ func (wr WebsiteRepository) GetUnprocessed() (websites []models.Website, err err
 	return
 }
 
-func (wr WebsiteRepository) Insert(website models.Website) error {
+func (wr WebsiteRepository) Insert(website *models.Website) error {
 	const stmt = "INSERT INTO websites (main_url, url_pattern, title_pattern, text_pattern) VALUES ($1, $2, $3, $4)"
 
 	_, err := wr.db.Exec(stmt, website.MainURL, website.URLPattern, website.TitlePattern, website.TextPattern)
@@ -51,7 +51,7 @@ func (wr WebsiteRepository) Insert(website models.Website) error {
 	return err
 }
 
-func (wr WebsiteRepository) Update(website models.Website) error {
+func (wr WebsiteRepository) Update(website *models.Website) error {
 	const stmt = "UPDATE websites SET process_at = $1 WHERE id = $2"
 
 	_, err := wr.db.Exec(stmt, website.ProcessAt, website.ID)

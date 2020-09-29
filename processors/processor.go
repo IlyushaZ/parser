@@ -8,7 +8,7 @@ import (
 
 type WebsiteRepository interface {
 	GetUnprocessed() ([]models.Website, error)
-	Update(website models.Website) error
+	Update(website *models.Website) error
 }
 
 type NewsRepository interface {
@@ -64,7 +64,7 @@ func (p Processor) ProcessWebsites(tasks chan<- Task) {
 		}
 
 		websites[i].Update()
-		if err := p.websiteRepo.Update(websites[i]); err != nil {
+		if err := p.websiteRepo.Update(&websites[i]); err != nil {
 			log.Println(err)
 		}
 	}
