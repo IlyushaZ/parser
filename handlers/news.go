@@ -1,11 +1,12 @@
 package handlers
 
 import (
-	"github.com/IlyushaZ/parser/models"
-	"github.com/mailru/easyjson"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/IlyushaZ/parser/models"
+	"github.com/mailru/easyjson"
 )
 
 type NewsRepository interface {

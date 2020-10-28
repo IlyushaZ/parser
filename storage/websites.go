@@ -1,10 +1,11 @@
 package storage
 
 import (
+	"strconv"
+
 	"github.com/IlyushaZ/parser/models"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"strconv"
 )
 
 const unprocessedLimit = 50

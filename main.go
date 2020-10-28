@@ -2,15 +2,15 @@ package main
 
 import (
 	"flag"
+	"log"
+	"net/http"
+	"time"
+
 	"github.com/IlyushaZ/parser/handlers"
 	"github.com/IlyushaZ/parser/processors"
 	"github.com/IlyushaZ/parser/storage"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"log"
-	"net/http"
-	_ "net/http/pprof"
-	"time"
 )
 
 const defaultDB = "postgresql://root:root@postgres:5432/parser?sslmode=disable"

@@ -1,10 +1,11 @@
 package processors
 
 import (
-	"github.com/gocolly/colly"
 	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/gocolly/colly"
 )
 
 func ScrapLinks(mainLink, linkPattern string) (links []string) {

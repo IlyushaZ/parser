@@ -1,9 +1,10 @@
 package processors
 
 import (
-	"github.com/IlyushaZ/parser/models"
 	"log"
 	"time"
+
+	"github.com/IlyushaZ/parser/models"
 )
 
 type WebsiteRepository interface {

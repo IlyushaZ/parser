@@ -1,12 +1,13 @@
 package handlers
 
 import (
-	"github.com/IlyushaZ/parser/models"
-	"github.com/mailru/easyjson"
-	"github.com/pkg/errors"
 	"log"
 	"net/http"
 	"net/url"
+
+	"github.com/IlyushaZ/parser/models"
+	"github.com/mailru/easyjson"
+	"github.com/pkg/errors"
 )
 
 var (
