@@ -52,6 +52,12 @@ func (wr WebsiteRepository) Insert(website *models.Website) error {
 	return err
 }
 
+func (wr WebsiteRepository) WebsiteExists(url string) (exists bool) {
+	const stmt = "SELECT EXISTS(SELECT id FROM websites WHERE main_url = $1)"
+	_ = wr.db.QueryRow(stmt, url).Scan(&exists)
+	return
+}
+
 func (wr WebsiteRepository) Update(website *models.Website) error {
 	const stmt = "UPDATE websites SET process_at = $1 WHERE id = $2"
 

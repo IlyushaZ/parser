@@ -18,15 +18,15 @@ type NewsRepository interface {
 type newsArr []models.News
 
 //easyjson:skip
-type NewsHandler struct {
+type News struct {
 	repo NewsRepository
 }
 
-func NewNewsHandler(repo NewsRepository) NewsHandler {
-	return NewsHandler{repo: repo}
+func NewNews(repo NewsRepository) News {
+	return News{repo: repo}
 }
 
-func (h NewsHandler) HandleGetNews(w http.ResponseWriter, r *http.Request) {
+func (h News) HandleGetNews(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -64,7 +64,7 @@ func (h NewsHandler) HandleGetNews(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(result)
 }
 
-func (h NewsHandler) HandleSearchNews(w http.ResponseWriter, r *http.Request) {
+func (h News) HandleSearchNews(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return

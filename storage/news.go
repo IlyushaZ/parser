@@ -2,6 +2,8 @@ package storage
 
 import (
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/IlyushaZ/parser/models"
 	"github.com/jmoiron/sqlx"
@@ -14,17 +16,6 @@ type NewsRepository struct {
 
 func NewNewsRepository(db *sqlx.DB) NewsRepository {
 	return NewsRepository{db: db}
-}
-
-func (nr NewsRepository) NewsExists(url string) (exists bool, err error) {
-	const stmt = "SELECT EXISTS(SELECT 1 FROM news WHERE url = $1)"
-
-	err = nr.db.QueryRow(stmt, url).Scan(&exists)
-	if err != nil {
-		err = errors.WithMessage(err, "news storage: err checking if news exists with url "+url)
-	}
-
-	return
 }
 
 func (nr NewsRepository) Get(limit, offset int) (result []models.News, err error) {
@@ -62,6 +53,7 @@ func (nr NewsRepository) SearchByTitle(search string) (result []models.News, err
 		err = errors.WithMessage(err, "news storage: err searching news by title "+search)
 		return
 	}
+	defer rows.Close()
 
 	var news models.News
 	for rows.Next() {
@@ -92,4 +84,104 @@ func (nr NewsRepository) Insert(news models.News) error {
 	}
 
 	return err
+}
+
+type newsCacheItem struct {
+	until time.Time
+}
+
+type websiteCacheItem struct {
+	mu   sync.RWMutex
+	news map[string]*newsCacheItem
+}
+
+type NewsCache struct {
+	duration  time.Duration
+	checkFreq time.Duration
+
+	items map[int]*websiteCacheItem
+
+	mu   sync.RWMutex
+	once sync.Once
+}
+
+func NewNewsCache(duration, checkFreq time.Duration) *NewsCache {
+	return &NewsCache{
+		duration:  duration,
+		checkFreq: checkFreq,
+	}
+}
+
+func (c *NewsCache) Exists(websiteID int, url string) bool {
+	c.internalInit()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if _, ok := c.items[websiteID]; !ok {
+		return false
+	}
+
+	if _, ok := c.items[websiteID].news[url]; ok {
+		return true
+	}
+
+	return false
+}
+
+func (c *NewsCache) Add(websiteID int, url string) {
+	c.internalInit()
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if _, ok := c.items[websiteID]; !ok {
+		c.items[websiteID] = &websiteCacheItem{news: make(map[string]*newsCacheItem)}
+	}
+
+	item := newsCacheItem{}
+	if c.duration != 0 {
+		item.until = time.Now().Add(c.duration)
+	}
+
+	c.items[websiteID].news[url] = &item
+}
+
+func (c *NewsCache) internalInit() {
+	c.once.Do(func() {
+		c.items = make(map[int]*websiteCacheItem)
+		c.clear()
+	})
+}
+
+// TODO: make a limit of goroutines running at the same time
+func (c *NewsCache) clear() {
+	go func() {
+		removeOverdue := func(w *websiteCacheItem, wg *sync.WaitGroup) {
+			w.mu.Lock()
+			defer wg.Done()
+			defer w.mu.Unlock()
+
+			now := time.Now()
+			for url, item := range w.news {
+				if item.until.Before(now) {
+					delete(w.news, url)
+				}
+			}
+		}
+
+		var wg sync.WaitGroup
+
+		for {
+			if c.duration == 0 {
+				break
+			}
+
+			for _, website := range c.items {
+				wg.Add(1)
+				go removeOverdue(website, &wg)
+			}
+
+			wg.Wait()
+			time.Sleep(c.checkFreq)
+		}
+	}()
 }

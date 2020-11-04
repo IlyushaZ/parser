@@ -11,12 +11,14 @@ import (
 )
 
 var (
-	errEmptyField = errors.New("you have to fill all the fields")
-	errInvalidURL = errors.New("given url is invalid")
+	errEmptyField    = errors.New("you have to fill all the fields")
+	errInvalidURL    = errors.New("given url is invalid")
+	errAlreadyExists = errors.New("website already exists")
 )
 
 type WebsiteRepository interface {
-	Insert(website *models.Website) error
+	Insert(*models.Website) error
+	WebsiteExists(string) bool
 }
 
 //easyjson:json
@@ -28,15 +30,15 @@ type body struct {
 }
 
 //easyjson:skip
-type WebsiteHandler struct {
+type Website struct {
 	repo WebsiteRepository
 }
 
-func NewWebsiteHandler(repo WebsiteRepository) WebsiteHandler {
-	return WebsiteHandler{repo: repo}
+func NewWebsite(repo WebsiteRepository) Website {
+	return Website{repo: repo}
 }
 
-func (h WebsiteHandler) HandlePostWebsite(w http.ResponseWriter, r *http.Request) {
+func (wh Website) HandlePostWebsite(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -48,13 +50,13 @@ func (h WebsiteHandler) HandlePostWebsite(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := validateRequest(reqBody); err != nil {
+	if err := wh.validateRequest(reqBody); err != nil {
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
 	model := models.NewWebsite(reqBody.MainURL, reqBody.URLPattern, reqBody.TitlePattern, reqBody.TextPattern)
-	if err := h.repo.Insert(&model); err != nil {
+	if err := wh.repo.Insert(&model); err != nil {
 		log.Println(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -63,12 +65,16 @@ func (h WebsiteHandler) HandlePostWebsite(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusCreated)
 }
 
-func validateRequest(body body) error {
+func (wh Website) validateRequest(body body) error {
 	if body.MainURL == "" ||
 		body.URLPattern == "" ||
 		body.TitlePattern == "" ||
 		body.TextPattern == "" {
 		return errEmptyField
+	}
+
+	if wh.repo.WebsiteExists(body.MainURL) {
+		return errAlreadyExists
 	}
 
 	if _, err := url.Parse(body.MainURL); err != nil {

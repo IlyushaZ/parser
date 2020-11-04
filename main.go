@@ -20,16 +20,17 @@ func main() {
 	flag.StringVar(&dbURL, "dbURL", defaultDB, "postgres url")
 	flag.Parse()
 
-	db, err := configureDB(dbURL)
+	pool, err := configureDB(dbURL)
 	if err != nil {
 		log.Fatal("error connecting to database: ", err)
 	}
-	defer db.Close()
+	defer pool.Close()
 
-	websiteRepo := storage.NewWebsiteRepository(db)
-	newsRepo := storage.NewNewsRepository(db)
+	websiteRepo := storage.NewWebsiteRepository(pool)
+	newsRepo := storage.NewNewsRepository(pool)
+	newsCache := storage.NewNewsCache(time.Minute, time.Minute)
 
-	processor := processors.NewProcessor(websiteRepo, newsRepo)
+	processor := processors.NewProcessor(websiteRepo, newsRepo, newsCache)
 
 	workerChan := make(chan processors.Task)
 	for i := 0; i < 5; i++ {
@@ -50,24 +51,31 @@ func main() {
 	}(processor, workerChan, signal)
 	defer close(signal)
 
-	websiteHandler := handlers.NewWebsiteHandler(websiteRepo)
-	newsHandler := handlers.NewNewsHandler(newsRepo)
+	websiteHandler := handlers.NewWebsite(websiteRepo)
+	newsHandler := handlers.NewNews(newsRepo)
 
 	http.HandleFunc("/websites", websiteHandler.HandlePostWebsite)
 	http.HandleFunc("/news", newsHandler.HandleGetNews)
 	http.HandleFunc("/news/search", newsHandler.HandleSearchNews)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func configureDB(url string) (*sqlx.DB, error) {
-	db, err := sqlx.Connect("postgres", url)
+	pool, err := sqlx.Open("postgres", url)
 	if err != nil {
 		return nil, err
 	}
 
-	db.SetMaxOpenConns(30)
-	db.SetMaxIdleConns(25)
-	db.SetConnMaxLifetime(time.Minute * 2)
+	if err := pool.Ping(); err != nil {
+		return nil, err
+	}
 
-	return db, nil
+	pool.SetMaxOpenConns(30)
+	pool.SetMaxIdleConns(25)
+	pool.SetConnMaxLifetime(time.Minute * 2)
+
+	return pool, nil
 }

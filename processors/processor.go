@@ -13,8 +13,12 @@ type WebsiteRepository interface {
 }
 
 type NewsRepository interface {
-	NewsExists(url string) (bool, error)
 	Insert(news models.News) error
+}
+
+type NewsCache interface {
+	Exists(int, string) bool
+	Add(int, string)
 }
 
 type Task struct {
@@ -25,12 +29,14 @@ type Task struct {
 type Processor struct {
 	websiteRepo WebsiteRepository
 	newsRepo    NewsRepository
+	cache       NewsCache
 }
 
-func NewProcessor(websiteRepo WebsiteRepository, newsRepo NewsRepository) Processor {
+func NewProcessor(websiteRepo WebsiteRepository, newsRepo NewsRepository, cache NewsCache) Processor {
 	return Processor{
 		websiteRepo: websiteRepo,
 		newsRepo:    newsRepo,
+		cache:       cache,
 	}
 }
 
@@ -51,17 +57,14 @@ func (p Processor) ProcessWebsites(tasks chan<- Task) {
 		task.websiteID = websites[i].ID
 
 		for _, l := range ScrapLinks(websites[i].MainURL, websites[i].URLPattern) {
-			exists, err := p.newsRepo.NewsExists(l)
-			if err != nil {
-				log.Println(err)
-			}
-
-			if exists {
+			if p.cache.Exists(task.websiteID, l) {
 				continue
 			}
 
 			task.url = l
 			tasks <- task
+
+			p.cache.Add(task.websiteID, l)
 		}
 
 		websites[i].Update()
@@ -75,6 +78,7 @@ func (p Processor) ProcessNews(tasks <-chan Task) {
 	for t := range tasks {
 		title, text := ScrapNews(t.url, t.titlePattern, t.textPattern)
 		news := models.NewNews(t.websiteID, t.url, title, text)
+
 		if err := p.newsRepo.Insert(news); err != nil {
 			log.Println(err)
 		}
