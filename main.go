@@ -28,7 +28,7 @@ func main() {
 
 	websiteRepo := storage.NewWebsiteRepository(pool)
 	newsRepo := storage.NewNewsRepository(pool)
-	newsCache := storage.NewNewsCache(time.Minute, time.Minute)
+	newsCache := storage.NewNewsCache(time.Minute*15, time.Minute)
 
 	processor := processors.NewProcessor(websiteRepo, newsRepo, newsCache)
 
