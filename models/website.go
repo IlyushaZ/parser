@@ -13,10 +13,10 @@ type Website struct {
 	ProcessAt    time.Time `db:"process_at"`
 }
 
-func NewWebsite(mainURL, URLPattern, titlePattern, textPattern string) Website {
+func NewWebsite(mainURL, urlPattern, titlePattern, textPattern string) Website {
 	return Website{
 		MainURL:      mainURL,
-		URLPattern:   URLPattern,
+		URLPattern:   urlPattern,
 		TitlePattern: titlePattern,
 		TextPattern:  textPattern,
 		ProcessAt:    time.Now(),

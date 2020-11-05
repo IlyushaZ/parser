@@ -14,4 +14,12 @@ escape-analysis:
 compose:
 	docker-compose up -d
 
+.PHONY: lint
+lint:
+	golangci-lint run -v
+
+.PHONY: push-image
+push-image:
+	docker build -t ilyushagod/parser . && docker push ilyushagod/parser
+
 .DEFAULT_GOAL := compose

@@ -2,5 +2,4 @@
 parser
 docker
 test.json
-.golangci.yml
 .DS_Store

@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"log"
 	"net/http"
 	"time"
 
@@ -22,7 +21,7 @@ func main() {
 
 	pool, err := configureDB(dbURL)
 	if err != nil {
-		log.Fatal("error connecting to database: ", err)
+		panic(err)
 	}
 	defer pool.Close()
 
@@ -59,7 +58,7 @@ func main() {
 	http.HandleFunc("/news/search", newsHandler.HandleSearchNews)
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 }
 

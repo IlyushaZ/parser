@@ -40,7 +40,7 @@ func ScrapLinks(mainLink, linkPattern string) (links []string) {
 	return
 }
 
-func ScrapNews(url, titlePattern, textPattern string) (title, text string) {
+func ScrapNews(websiteURL, titlePattern, textPattern string) (title, text string) {
 	c := colly.NewCollector()
 
 	c.OnHTML(titlePattern, func(e *colly.HTMLElement) {
@@ -51,6 +51,6 @@ func ScrapNews(url, titlePattern, textPattern string) (title, text string) {
 		text += strings.TrimSpace(e.Text)
 	})
 
-	_ = c.Visit(url)
+	_ = c.Visit(websiteURL)
 	return
 }
