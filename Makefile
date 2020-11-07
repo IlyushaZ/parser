@@ -1,14 +1,14 @@
 .PHONY: run
 run:
-	go build -o parser main.go && ./parser
+	go build -o bin/parser cmd/parser/main.go && ./bin/parser
 
 .PHONY: build
 build:
-	go build -o parser main.go
+	go build -o bin/parser cmd/parser/main.go
 
 .PHONY: escape-analysis
 escape-analysis:
-	go build -gcflags "-m -m"
+	go build -gcflags "-m -m" cmd/parser/main.go
 
 .PHONY: compose
 compose:

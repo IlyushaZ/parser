@@ -1,4 +1,4 @@
-package models
+package model
 
 //easyjson:json
 type News struct {

@@ -1,19 +1,19 @@
-package processors
+package processor
 
 import (
 	"log"
 	"time"
 
-	"github.com/IlyushaZ/parser/models"
+	"github.com/IlyushaZ/parser/internal/model"
 )
 
 type WebsiteRepository interface {
-	GetUnprocessed() ([]models.Website, error)
-	Update(website *models.Website) error
+	GetUnprocessed() ([]model.Website, error)
+	Update(website *model.Website) error
 }
 
 type NewsRepository interface {
-	Insert(news models.News) error
+	Insert(news model.News) error
 }
 
 type NewsCache interface {
@@ -32,7 +32,7 @@ type Processor struct {
 	cache       NewsCache
 }
 
-func NewProcessor(websiteRepo WebsiteRepository, newsRepo NewsRepository, cache NewsCache) Processor {
+func New(websiteRepo WebsiteRepository, newsRepo NewsRepository, cache NewsCache) Processor {
 	return Processor{
 		websiteRepo: websiteRepo,
 		newsRepo:    newsRepo,
@@ -77,7 +77,7 @@ func (p Processor) ProcessWebsites(tasks chan<- Task) {
 func (p Processor) ProcessNews(tasks <-chan Task) {
 	for t := range tasks {
 		title, text := ScrapNews(t.url, t.titlePattern, t.textPattern)
-		news := models.NewNews(t.websiteID, t.url, title, text)
+		news := model.NewNews(t.websiteID, t.url, title, text)
 
 		if err := p.newsRepo.Insert(news); err != nil {
 			log.Println(err)

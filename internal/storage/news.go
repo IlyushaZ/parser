@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/IlyushaZ/parser/models"
+	"github.com/IlyushaZ/parser/internal/model"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 )
@@ -18,8 +18,8 @@ func NewNewsRepository(db *sqlx.DB) NewsRepository {
 	return NewsRepository{db: db}
 }
 
-func (nr NewsRepository) Get(limit, offset int) (result []models.News, err error) {
-	result = make([]models.News, 0, limit)
+func (nr NewsRepository) Get(limit, offset int) (result []model.News, err error) {
+	result = make([]model.News, 0, limit)
 	stmt := "SELECT * FROM news LIMIT " + strconv.Itoa(limit) + " OFFSET " + strconv.Itoa(offset)
 
 	rows, err := nr.db.Queryx(stmt)
@@ -28,7 +28,7 @@ func (nr NewsRepository) Get(limit, offset int) (result []models.News, err error
 		return
 	}
 
-	var news models.News
+	var news model.News
 	for rows.Next() {
 		_ = rows.StructScan(&news)
 		result = append(result, news)
@@ -44,9 +44,9 @@ func (nr NewsRepository) Get(limit, offset int) (result []models.News, err error
 	return
 }
 
-func (nr NewsRepository) SearchByTitle(search string) (result []models.News, err error) {
+func (nr NewsRepository) SearchByTitle(search string) (result []model.News, err error) {
 	const stmt = "SELECT * FROM news WHERE title LIKE $1"
-	result = make([]models.News, 0)
+	result = make([]model.News, 0)
 
 	rows, err := nr.db.Queryx(stmt, "%"+search+"%")
 	if err != nil {
@@ -55,7 +55,7 @@ func (nr NewsRepository) SearchByTitle(search string) (result []models.News, err
 	}
 	defer rows.Close()
 
-	var news models.News
+	var news model.News
 	for rows.Next() {
 		_ = rows.StructScan(&news)
 		result = append(result, news)
@@ -71,7 +71,7 @@ func (nr NewsRepository) SearchByTitle(search string) (result []models.News, err
 	return
 }
 
-func (nr NewsRepository) Insert(news models.News) error {
+func (nr NewsRepository) Insert(news model.News) error {
 	const stmt = "INSERT INTO news (website_id, url, title, text) VALUES ($1, $2, $3, $4)"
 	_, err := nr.db.Exec(stmt, news.WebsiteID, news.URL, news.Title, news.Text)
 

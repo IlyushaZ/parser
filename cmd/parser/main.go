@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/IlyushaZ/parser/handlers"
-	"github.com/IlyushaZ/parser/processors"
-	"github.com/IlyushaZ/parser/storage"
+	"github.com/IlyushaZ/parser/internal/handler"
+	"github.com/IlyushaZ/parser/internal/processor"
+	"github.com/IlyushaZ/parser/internal/storage"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
@@ -29,15 +29,15 @@ func main() {
 	newsRepo := storage.NewNewsRepository(pool)
 	newsCache := storage.NewNewsCache(time.Minute*15, time.Minute)
 
-	processor := processors.NewProcessor(websiteRepo, newsRepo, newsCache)
+	proc := processor.New(websiteRepo, newsRepo, newsCache)
 
-	workerChan := make(chan processors.Task)
+	workerChan := make(chan processor.Task)
 	for i := 0; i < 5; i++ {
-		go processor.ProcessNews(workerChan)
+		go proc.ProcessNews(workerChan)
 	}
 
 	signal := make(chan struct{})
-	go func(p processors.Processor, tasks chan processors.Task, signal chan struct{}) {
+	go func(p processor.Processor, tasks chan processor.Task, signal chan struct{}) {
 		for {
 			select {
 			case <-signal:
@@ -47,11 +47,11 @@ func main() {
 				p.ProcessWebsites(tasks)
 			}
 		}
-	}(processor, workerChan, signal)
+	}(proc, workerChan, signal)
 	defer close(signal)
 
-	websiteHandler := handlers.NewWebsite(websiteRepo)
-	newsHandler := handlers.NewNews(newsRepo)
+	websiteHandler := handler.NewWebsite(websiteRepo)
+	newsHandler := handler.NewNews(newsRepo)
 
 	http.HandleFunc("/websites", websiteHandler.HandlePostWebsite)
 	http.HandleFunc("/news", newsHandler.HandleGetNews)

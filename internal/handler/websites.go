@@ -1,11 +1,11 @@
-package handlers
+package handler
 
 import (
 	"log"
 	"net/http"
 	"net/url"
 
-	"github.com/IlyushaZ/parser/models"
+	"github.com/IlyushaZ/parser/internal/model"
 	"github.com/mailru/easyjson"
 	"github.com/pkg/errors"
 )
@@ -17,7 +17,7 @@ var (
 )
 
 type WebsiteRepository interface {
-	Insert(*models.Website) error
+	Insert(*model.Website) error
 	WebsiteExists(string) bool
 }
 
@@ -55,8 +55,8 @@ func (wh Website) HandlePostWebsite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	model := models.NewWebsite(reqBody.MainURL, reqBody.URLPattern, reqBody.TitlePattern, reqBody.TextPattern)
-	if err := wh.repo.Insert(&model); err != nil {
+	website := model.NewWebsite(reqBody.MainURL, reqBody.URLPattern, reqBody.TitlePattern, reqBody.TextPattern)
+	if err := wh.repo.Insert(&website); err != nil {
 		log.Println(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return

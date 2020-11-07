@@ -4,7 +4,7 @@ RUN mkdir /app
 ADD . /app
 WORKDIR /app
 
-RUN go build -o /bin/parser
+RUN go build -o /bin/parser cmd/parser/main.go
 
 FROM alpine:latest
 COPY --from=build /bin/parser /bin/parser

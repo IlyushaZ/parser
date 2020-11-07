@@ -1,5 +1,5 @@
 .idea
-parser
+bin/parser
 docker
 test.json
 .DS_Store

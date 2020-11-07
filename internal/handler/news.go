@@ -1,21 +1,21 @@
-package handlers
+package handler
 
 import (
 	"log"
 	"net/http"
 	"strconv"
 
-	"github.com/IlyushaZ/parser/models"
+	"github.com/IlyushaZ/parser/internal/model"
 	"github.com/mailru/easyjson"
 )
 
 type NewsRepository interface {
-	Get(limit, offset int) ([]models.News, error)
-	SearchByTitle(title string) ([]models.News, error)
+	Get(limit, offset int) ([]model.News, error)
+	SearchByTitle(title string) ([]model.News, error)
 }
 
 //easyjson:json
-type newsArr []models.News
+type newsArr []model.News
 
 //easyjson:skip
 type News struct {
