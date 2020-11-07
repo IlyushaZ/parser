@@ -17,6 +17,9 @@ services:
     container_name: app
     image: ilyushagod/parser
     restart: unless-stopped
+    depends_on:
+      - postgres
+      - migrate
     ports:
       - 8083:8080
 
@@ -24,6 +27,8 @@ services:
     container_name: migrate
     image: migrate/migrate
     restart: on-failure
+    depends_on:
+      - postgres
     volumes:
       - ./migrations:/migrations
     command: ["-path", "/migrations", "-database",  "postgres://root:root@postgres:5432/parser?sslmode=disable", "up"]
