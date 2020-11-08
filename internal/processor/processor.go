@@ -1,24 +1,27 @@
 package processor
 
 import (
+	"errors"
 	"log"
 	"time"
 
 	"github.com/IlyushaZ/parser/internal/model"
+	"github.com/IlyushaZ/parser/internal/storage"
 )
 
 type WebsiteRepository interface {
 	GetUnprocessed() ([]model.Website, error)
-	Update(website *model.Website) error
+	Update(*model.Website) error
 }
 
 type NewsRepository interface {
-	Insert(news model.News) error
+	Insert(model.News) error
+	Exists(string) bool
 }
 
 type NewsCache interface {
-	Exists(int, string) bool
-	Add(int, string)
+	Exists(string, int) (bool, error)
+	Add(string, int) error
 }
 
 type Task struct {
@@ -42,11 +45,11 @@ func New(websiteRepo WebsiteRepository, newsRepo NewsRepository, cache NewsCache
 
 func (p Processor) ProcessWebsites(tasks chan<- Task) {
 	websites, err := p.websiteRepo.GetUnprocessed()
-	if err != nil {
+	if err != nil && !errors.Is(err, storage.ErrNotFound) {
 		log.Println(err)
 	}
 
-	if len(websites) == 0 {
+	if errors.Is(err, storage.ErrNotFound) {
 		time.Sleep(1 * time.Minute)
 	}
 
@@ -57,14 +60,24 @@ func (p Processor) ProcessWebsites(tasks chan<- Task) {
 		task.websiteID = websites[i].ID
 
 		for _, l := range ScrapLinks(websites[i].MainURL, websites[i].URLPattern) {
-			if p.cache.Exists(task.websiteID, l) {
+			exists, err := p.cache.Exists(l, task.websiteID)
+			if err != nil && !errors.Is(err, storage.ErrNotFound) {
+				log.Println(err)
+			}
+
+			// if news exists in cache
+			// or if it has gone from cache, but exists in db
+			if exists || p.newsRepo.Exists(l) {
 				continue
+			}
+
+			// new urls are going to cache
+			if err = p.cache.Add(l, task.websiteID); err != nil {
+				log.Println(err)
 			}
 
 			task.url = l
 			tasks <- task
-
-			p.cache.Add(task.websiteID, l)
 		}
 
 		websites[i].Update()

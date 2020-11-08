@@ -8,15 +8,20 @@ import (
 	"github.com/IlyushaZ/parser/internal/handler"
 	"github.com/IlyushaZ/parser/internal/processor"
 	"github.com/IlyushaZ/parser/internal/storage"
+	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
-const defaultDB = "postgresql://root:root@postgres:5432/parser?sslmode=disable"
+const (
+	defaultDB       = "postgresql://root:root@postgres:5432/parser?sslmode=disable"
+	defaultMemcache = "memcached:11211"
+)
 
 func main() {
-	var dbURL string
+	var dbURL, mcURL string
 	flag.StringVar(&dbURL, "dbURL", defaultDB, "postgres url")
+	flag.StringVar(&mcURL, "mcURL", defaultMemcache, "memcache url")
 	flag.Parse()
 
 	pool, err := configureDB(dbURL)
@@ -27,7 +32,16 @@ func main() {
 
 	websiteRepo := storage.NewWebsiteRepository(pool)
 	newsRepo := storage.NewNewsRepository(pool)
-	newsCache := storage.NewNewsCache(time.Minute*15, time.Minute)
+
+	mc := memcache.New(mcURL)
+	if err = mc.Ping(); err != nil {
+		panic(err)
+	}
+	mc.MaxIdleConns = 10
+	if err = mc.DeleteAll(); err != nil {
+		panic(err)
+	}
+	newsCache := storage.NewNewsCache(mc, 1800)
 
 	proc := processor.New(websiteRepo, newsRepo, newsCache)
 

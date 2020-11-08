@@ -20,8 +20,15 @@ services:
     depends_on:
       - postgres
       - migrate
+      - memcached
     ports:
       - 8083:8080
+
+  memcached:
+    image: memcached:latest
+    container_name: memcached
+    ports:
+      - 11212:11211
 
   migrate:
     container_name: migrate

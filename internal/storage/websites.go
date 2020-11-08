@@ -38,6 +38,10 @@ func (wr WebsiteRepository) GetUnprocessed() (websites []model.Website, err erro
 		err = errors.WithMessage(err, "website storage: err scanning unprocessed websites")
 	}
 
+	if len(websites) == 0 {
+		err = ErrNotFound
+	}
+
 	return
 }
 

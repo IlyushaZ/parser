@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/IlyushaZ/parser/internal/model"
+	"github.com/IlyushaZ/parser/internal/storage"
 	"github.com/mailru/easyjson"
 )
 
@@ -41,6 +43,11 @@ func (h News) HandleGetNews(w http.ResponseWriter, r *http.Request) {
 		limit, err = strconv.Atoi(param[0])
 	}
 
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	param, ok = r.URL.Query()["offset"]
 	if ok && len(param) > 0 {
 		offset, err = strconv.Atoi(param[0])
@@ -52,7 +59,7 @@ func (h News) HandleGetNews(w http.ResponseWriter, r *http.Request) {
 	}
 
 	news, err := h.repo.Get(limit, offset)
-	if err != nil {
+	if err != nil && !errors.Is(err, storage.ErrNotFound) {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -61,7 +68,10 @@ func (h News) HandleGetNews(w http.ResponseWriter, r *http.Request) {
 	result, _ := easyjson.Marshal(newsArr(news))
 
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(result)
+	_, err = w.Write(result)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func (h News) HandleSearchNews(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +87,7 @@ func (h News) HandleSearchNews(w http.ResponseWriter, r *http.Request) {
 	}
 
 	news, err := h.repo.SearchByTitle(query[0])
-	if err != nil {
+	if err != nil && !errors.Is(err, storage.ErrNotFound) {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
