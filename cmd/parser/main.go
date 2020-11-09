@@ -71,7 +71,7 @@ func main() {
 
 	srv := http.Server{
 		Handler: mux,
-		Addr:    ":8083",
+		Addr:    ":8080",
 	}
 
 	go func() {
