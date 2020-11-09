@@ -3,6 +3,7 @@ package processor
 import (
 	"errors"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/IlyushaZ/parser/internal/model"
@@ -30,6 +31,7 @@ type Task struct {
 }
 
 type Processor struct {
+	tasks       chan Task
 	websiteRepo WebsiteRepository
 	newsRepo    NewsRepository
 	cache       NewsCache
@@ -37,13 +39,29 @@ type Processor struct {
 
 func New(websiteRepo WebsiteRepository, newsRepo NewsRepository, cache NewsCache) Processor {
 	return Processor{
+		tasks:       make(chan Task),
 		websiteRepo: websiteRepo,
 		newsRepo:    newsRepo,
 		cache:       cache,
 	}
 }
 
-func (p Processor) ProcessWebsites(tasks chan<- Task) {
+func (p Processor) Process(stop <-chan struct{}, wg *sync.WaitGroup) {
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stop:
+				close(p.tasks)
+				return
+			default:
+				p.processWebsites()
+			}
+		}
+	}()
+}
+
+func (p Processor) processWebsites() {
 	websites, err := p.websiteRepo.GetUnprocessed()
 	if err != nil && !errors.Is(err, storage.ErrNotFound) {
 		log.Println(err)
@@ -77,7 +95,7 @@ func (p Processor) ProcessWebsites(tasks chan<- Task) {
 			}
 
 			task.url = l
-			tasks <- task
+			p.tasks <- task
 		}
 
 		websites[i].Update()
@@ -87,8 +105,10 @@ func (p Processor) ProcessWebsites(tasks chan<- Task) {
 	}
 }
 
-func (p Processor) ProcessNews(tasks <-chan Task) {
-	for t := range tasks {
+func (p Processor) ProcessNews(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for t := range p.tasks {
 		title, text := ScrapNews(t.url, t.titlePattern, t.textPattern)
 		news := model.NewNews(t.websiteID, t.url, title, text)
 

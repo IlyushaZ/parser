@@ -1,8 +1,13 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"net/http"
+	"os"
+	"os/signal"
+	"sync"
 	"time"
 
 	"github.com/IlyushaZ/parser/internal/handler"
@@ -41,39 +46,50 @@ func main() {
 	if err = mc.DeleteAll(); err != nil {
 		panic(err)
 	}
+
 	newsCache := storage.NewNewsCache(mc, 1800)
 
 	proc := processor.New(websiteRepo, newsRepo, newsCache)
 
-	workerChan := make(chan processor.Task)
+	var wg sync.WaitGroup
+	wg.Add(5)
 	for i := 0; i < 5; i++ {
-		go proc.ProcessNews(workerChan)
+		go proc.ProcessNews(&wg)
 	}
 
-	signal := make(chan struct{})
-	go func(p processor.Processor, tasks chan processor.Task, signal chan struct{}) {
-		for {
-			select {
-			case <-signal:
-				close(tasks)
-				return
-			default:
-				p.ProcessWebsites(tasks)
-			}
-		}
-	}(proc, workerChan, signal)
-	defer close(signal)
+	stop := make(chan struct{})
+	wg.Add(1)
+	proc.Process(stop, &wg)
 
 	websiteHandler := handler.NewWebsite(websiteRepo)
 	newsHandler := handler.NewNews(newsRepo)
 
-	http.HandleFunc("/websites", websiteHandler.HandlePostWebsite)
-	http.HandleFunc("/news", newsHandler.HandleGetNews)
-	http.HandleFunc("/news/search", newsHandler.HandleSearchNews)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/websites", websiteHandler.HandlePostWebsite)
+	mux.HandleFunc("/news", newsHandler.HandleGetNews)
+	mux.HandleFunc("/news/search", newsHandler.HandleSearchNews)
 
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	srv := http.Server{
+		Handler: mux,
+		Addr:    ":8083",
+	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			panic(err)
+		}
+	}()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+
+	<-sigCh
+
+	if err := srv.Shutdown(context.Background()); err != nil {
 		panic(err)
 	}
+	close(stop)
+	wg.Wait()
 }
 
 func configureDB(url string) (*sqlx.DB, error) {
