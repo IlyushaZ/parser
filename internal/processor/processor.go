@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"context"
 	"errors"
 	"log"
 	"sync"
@@ -46,12 +47,12 @@ func New(websiteRepo WebsiteRepository, newsRepo NewsRepository, cache NewsCache
 	}
 }
 
-func (p Processor) Process(stop <-chan struct{}, wg *sync.WaitGroup) {
+func (p Processor) Process(ctx context.Context, wg *sync.WaitGroup) {
 	go func() {
 		defer wg.Done()
 		for {
 			select {
-			case <-stop:
+			case <-ctx.Done():
 				close(p.tasks)
 				return
 			default:

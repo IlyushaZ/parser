@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -31,7 +32,8 @@ func main() {
 
 	pool, err := configureDB(dbURL)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 	defer pool.Close()
 
@@ -40,7 +42,8 @@ func main() {
 
 	mc := memcache.New(mcURL)
 	if err = mc.Ping(); err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
 	mc.MaxIdleConns = 10
 	if err = mc.DeleteAll(); err != nil {
@@ -57,9 +60,9 @@ func main() {
 		go proc.ProcessNews(&wg)
 	}
 
-	stop := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
 	wg.Add(1)
-	proc.Process(stop, &wg)
+	proc.Process(ctx, &wg)
 
 	websiteHandler := handler.NewWebsite(websiteRepo)
 	newsHandler := handler.NewNews(newsRepo)
@@ -76,7 +79,7 @@ func main() {
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			panic(err)
+			log.Println(err)
 		}
 	}()
 
@@ -88,7 +91,7 @@ func main() {
 	if err := srv.Shutdown(context.Background()); err != nil {
 		panic(err)
 	}
-	close(stop)
+	cancel()
 	wg.Wait()
 }
 
