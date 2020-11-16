@@ -1,13 +1,16 @@
 package handler
 
 import (
+	"context"
 	"log"
-	"net/http"
 	"net/url"
 
 	"github.com/IlyushaZ/parser/internal/model"
-	"github.com/mailru/easyjson"
+	"github.com/IlyushaZ/parser/pkg/api"
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -21,63 +24,46 @@ type WebsiteRepository interface {
 	WebsiteExists(string) bool
 }
 
-//easyjson:json
-type body struct {
-	MainURL      string `json:"main_url"`
-	URLPattern   string `json:"url_pattern"`
-	TitlePattern string `json:"title_pattern"`
-	TextPattern  string `json:"text_pattern"`
-}
-
-//easyjson:skip
-type Website struct {
-	repo WebsiteRepository
-}
-
 func NewWebsite(repo WebsiteRepository) Website {
 	return Website{repo: repo}
 }
 
-func (wh Website) HandlePostWebsite(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	var reqBody body
-	if err := easyjson.UnmarshalFromReader(r.Body, &reqBody); err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	if err := wh.validateRequest(reqBody); err != nil {
-		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-		return
-	}
-
-	website := model.NewWebsite(reqBody.MainURL, reqBody.URLPattern, reqBody.TitlePattern, reqBody.TextPattern)
-	if err := wh.repo.Insert(&website); err != nil {
-		log.Println(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
+type Website struct {
+	api.UnimplementedWebsiteServer
+	repo WebsiteRepository
 }
 
-func (wh Website) validateRequest(body body) error {
-	if body.MainURL == "" ||
-		body.URLPattern == "" ||
-		body.TitlePattern == "" ||
-		body.TextPattern == "" {
+func (w Website) Add(ctx context.Context, req *api.AddWebsiteRequest) (*empty.Empty, error) {
+	if err := w.validate(req); err != nil {
+		if errors.Is(err, errAlreadyExists) {
+			return nil, status.Error(codes.AlreadyExists, err.Error())
+		}
+
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	website := model.NewWebsite(req.GetMainUrl(), req.GetUrlPattern(), req.GetTitlePattern(), req.GetTextPattern())
+	if err := w.repo.Insert(&website); err != nil {
+		log.Println(err.Error())
+		return nil, status.Error(codes.DataLoss, "could not save website")
+	}
+
+	return &empty.Empty{}, nil
+}
+
+func (w Website) validate(req *api.AddWebsiteRequest) error {
+	if req.GetMainUrl() == "" ||
+		req.GetUrlPattern() == "" ||
+		req.GetTitlePattern() == "" ||
+		req.GetTextPattern() == "" {
 		return errEmptyField
 	}
 
-	if wh.repo.WebsiteExists(body.MainURL) {
+	if w.repo.WebsiteExists(req.GetMainUrl()) {
 		return errAlreadyExists
 	}
 
-	if _, err := url.Parse(body.MainURL); err != nil {
+	if _, err := url.Parse(req.GetMainUrl()); err != nil {
 		return errInvalidURL
 	}
 

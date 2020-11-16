@@ -1,14 +1,15 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"log"
-	"net/http"
-	"strconv"
 
 	"github.com/IlyushaZ/parser/internal/model"
 	"github.com/IlyushaZ/parser/internal/storage"
-	"github.com/mailru/easyjson"
+	"github.com/IlyushaZ/parser/pkg/api"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type NewsRepository interface {
@@ -16,11 +17,8 @@ type NewsRepository interface {
 	SearchByTitle(title string) ([]model.News, error)
 }
 
-//easyjson:json
-type newsArr []model.News
-
-//easyjson:skip
 type News struct {
+	api.UnimplementedNewsServer
 	repo NewsRepository
 }
 
@@ -28,73 +26,58 @@ func NewNews(repo NewsRepository) News {
 	return News{repo: repo}
 }
 
-func (h News) HandleGetNews(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
+func (n News) Get(ctx context.Context, req *api.GetNewsRequest) (*api.NewsResponse, error) {
+	if req.GetLimit() <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "limit should be more than 0")
 	}
 
-	limit := 10
-	offset := 0
-	var err error
-
-	param, ok := r.URL.Query()["limit"]
-	if ok && len(param) > 0 {
-		limit, err = strconv.Atoi(param[0])
+	if req.GetOffset() < 0 {
+		return nil, status.Error(codes.InvalidArgument, "offset cannot be less than 0")
 	}
 
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	param, ok = r.URL.Query()["offset"]
-	if ok && len(param) > 0 {
-		offset, err = strconv.Atoi(param[0])
-	}
-
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	news, err := h.repo.Get(limit, offset)
+	news, err := n.repo.Get(int(req.GetLimit()), int(req.GetOffset()))
 	if err != nil && !errors.Is(err, storage.ErrNotFound) {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		log.Println(err.Error())
+		return nil, status.Error(codes.Internal, "")
 	}
 
-	result, _ := easyjson.Marshal(newsArr(news))
+	resp := &api.NewsResponse{}
+	resp.News = make([]*api.NewsResponse_News, 0, req.GetLimit())
+	respElem := &api.NewsResponse_News{}
+	for i := range news {
+		respElem.Id = int64(news[i].ID)
+		respElem.Url = news[i].URL
+		respElem.Title = news[i].Title
+		respElem.Text = news[i].Text
 
-	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(result)
-	if err != nil {
-		log.Println(err)
+		resp.News = append(resp.News, respElem)
 	}
+
+	return resp, nil
 }
 
-func (h News) HandleSearchNews(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
+func (n News) Search(ctx context.Context, req *api.SearchNewsRequest) (*api.NewsResponse, error) {
+	if req.GetQuery() == "" {
+		return nil, status.Error(codes.InvalidArgument, "search query is not entered")
 	}
 
-	query, ok := r.URL.Query()["q"]
-	if !ok || len(query) < 1 {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	news, err := h.repo.SearchByTitle(query[0])
+	news, err := n.repo.SearchByTitle(req.GetQuery())
 	if err != nil && !errors.Is(err, storage.ErrNotFound) {
 		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return nil, status.Error(codes.Internal, "")
 	}
 
-	result, _ := easyjson.Marshal(newsArr(news))
+	resp := &api.NewsResponse{}
+	resp.News = make([]*api.NewsResponse_News, 0, len(news))
+	respElem := &api.NewsResponse_News{}
+	for i := range news {
+		respElem.Id = int64(news[i].ID)
+		respElem.Url = news[i].URL
+		respElem.Title = news[i].Title
+		respElem.Text = news[i].Text
 
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(result)
+		resp.News = append(resp.News, respElem)
+	}
+
+	return resp, nil
 }

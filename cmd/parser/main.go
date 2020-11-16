@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"log"
-	"net/http"
+	"net"
 	"os"
 	"os/signal"
 	"sync"
@@ -14,9 +13,12 @@ import (
 	"github.com/IlyushaZ/parser/internal/handler"
 	"github.com/IlyushaZ/parser/internal/processor"
 	"github.com/IlyushaZ/parser/internal/storage"
+	"github.com/IlyushaZ/parser/pkg/api"
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -32,7 +34,7 @@ func main() {
 
 	pool, err := configureDB(dbURL)
 	if err != nil {
-		log.Println(err)
+		log.Println(err.Error())
 		return
 	}
 	defer pool.Close()
@@ -42,12 +44,13 @@ func main() {
 
 	mc := memcache.New(mcURL)
 	if err = mc.Ping(); err != nil {
-		log.Println(err)
+		log.Println(err.Error())
 		return
 	}
 	mc.MaxIdleConns = 10
 	if err = mc.DeleteAll(); err != nil {
-		panic(err)
+		log.Println(err.Error())
+		return
 	}
 
 	newsCache := storage.NewNewsCache(mc, 1800)
@@ -67,19 +70,25 @@ func main() {
 	websiteHandler := handler.NewWebsite(websiteRepo)
 	newsHandler := handler.NewNews(newsRepo)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/websites", websiteHandler.HandlePostWebsite)
-	mux.HandleFunc("/news", newsHandler.HandleGetNews)
-	mux.HandleFunc("/news/search", newsHandler.HandleSearchNews)
+	srv := grpc.NewServer()
+	api.RegisterWebsiteServer(srv, websiteHandler)
+	api.RegisterNewsServer(srv, newsHandler)
 
-	srv := http.Server{
-		Handler: mux,
-		Addr:    ":8080",
+	l, err := net.Listen("tcp", ":8080") //nolint:gosec
+	if err != nil {
+		log.Println(err)
+
+		cancel()
+		wg.Wait()
+		return
 	}
 
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Println(err)
+		if err := srv.Serve(l); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+			cancel()
+			wg.Wait()
+
+			panic(err)
 		}
 	}()
 
@@ -88,9 +97,7 @@ func main() {
 
 	<-sigCh
 
-	if err := srv.Shutdown(context.Background()); err != nil {
-		panic(err)
-	}
+	srv.Stop()
 	cancel()
 	wg.Wait()
 }
