@@ -6,31 +6,37 @@ package api;
 
 import "google/protobuf/empty.proto";
 
+/* Website is the service which allows adding new websites to be parsed */
 service Website {
   rpc Add(AddWebsiteRequest) returns (google.protobuf.Empty);
 }
 
+/* AddWebsiteRequest represents a body of request to add a website. */
 message AddWebsiteRequest {
-  string main_url = 1;
-  string url_pattern = 2;
-  string title_pattern = 3;
-  string text_pattern = 4;
+  string main_url = 1; // the URL of main page to be parsed (for example, page with list of news)
+  string url_pattern = 2; // a regexp for url of a page containing news or any other content to be parsed
+  string title_pattern = 3; // html path to a title on a page with news
+  string text_pattern = 4; // html path to a body (text) on a page with news
 }
 
+/* News is the service which allows getting list of news and searching by their titles */
 service News {
   rpc Get(GetNewsRequest) returns (NewsResponse);
   rpc Search(SearchNewsRequest) returns(NewsResponse);
 }
 
+/* GetNewsRequest represents a request to get list of news with pagination */
 message GetNewsRequest {
   int32 limit = 1;
   int32 offset = 2;
 }
 
+/* SearchNewsRequest represents a request to get news which contains special words in a title */
 message SearchNewsRequest {
   string query = 1;
 }
 
+/* NewsResponse represents a list of news */
 message NewsResponse {
   message News {
     int32 id = 1;

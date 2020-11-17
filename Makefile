@@ -8,7 +8,7 @@ build:
 
 .PHONY: escape-analysis
 escape-analysis:
-	go build -gcflags "-m -m" cmd/parser/main.go
+	go build -gcflags "-m -m" -o bin/parser cmd/parser/main.go
 
 .PHONY: compose
 compose:
