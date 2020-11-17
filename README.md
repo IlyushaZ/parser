@@ -11,7 +11,7 @@ with your credentials
 - run ```go build -o ./parser && ./parser -dbURL 'postgresql://mylogin:mypassword@localhost:5432/mydbname?sslmode=disable'```
 
 ### Endpoints
-See [parser.proto](https://github.com/IlyushaZ/parser/api/proto/parser.proto)
+See [parser.proto](https://github.com/IlyushaZ/parser/blob/master/api/proto/parser.proto)
 
 ### TODO:
 - Add unit tests
