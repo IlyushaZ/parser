@@ -69,7 +69,7 @@ func (wr WebsiteRepository) Update(website *model.Website) error {
 	if err != nil {
 		err = errors.WithMessage(
 			err,
-			"website storage: err updating website with id "+strconv.Itoa(website.ID),
+			"website storage: err updating website with id "+strconv.Itoa(int(website.ID)),
 		)
 	}
 

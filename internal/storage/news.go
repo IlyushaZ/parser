@@ -117,7 +117,7 @@ func NewNewsCache(mc *memcache.Client, ttl int32) NewsCache {
 	}
 }
 
-func (nc NewsCache) Exists(url string, websiteID int) (bool, error) {
+func (nc NewsCache) Exists(url string, websiteID int32) (bool, error) {
 	item, err := nc.mc.Get(url)
 	if err != nil {
 		if errors.Is(err, memcache.ErrCacheMiss) {
@@ -128,17 +128,17 @@ func (nc NewsCache) Exists(url string, websiteID int) (bool, error) {
 		return false, err
 	}
 
-	if string(item.Value) == strconv.Itoa(websiteID) {
+	if string(item.Value) == strconv.Itoa(int(websiteID)) {
 		return true, nil
 	}
 
 	return false, nil
 }
 
-func (nc NewsCache) Add(url string, websiteID int) error {
+func (nc NewsCache) Add(url string, websiteID int32) error {
 	err := nc.mc.Set(&memcache.Item{
 		Key:        url,
-		Value:      []byte(strconv.Itoa(websiteID)),
+		Value:      []byte(strconv.Itoa(int(websiteID))),
 		Expiration: nc.ttl,
 	})
 

@@ -43,14 +43,15 @@ func (n News) Get(ctx context.Context, req *api.GetNewsRequest) (*api.NewsRespon
 
 	resp := &api.NewsResponse{}
 	resp.News = make([]*api.NewsResponse_News, 0, req.GetLimit())
-	respElem := &api.NewsResponse_News{}
 	for i := range news {
-		respElem.Id = int64(news[i].ID)
+		respElem := api.NewsResponse_News{}
+
+		respElem.Id = news[i].ID
 		respElem.Url = news[i].URL
 		respElem.Title = news[i].Title
 		respElem.Text = news[i].Text
 
-		resp.News = append(resp.News, respElem)
+		resp.News = append(resp.News, &respElem)
 	}
 
 	return resp, nil
@@ -69,14 +70,15 @@ func (n News) Search(ctx context.Context, req *api.SearchNewsRequest) (*api.News
 
 	resp := &api.NewsResponse{}
 	resp.News = make([]*api.NewsResponse_News, 0, len(news))
-	respElem := &api.NewsResponse_News{}
 	for i := range news {
-		respElem.Id = int64(news[i].ID)
+		respElem := api.NewsResponse_News{}
+
+		respElem.Id = news[i].ID
 		respElem.Url = news[i].URL
 		respElem.Title = news[i].Title
 		respElem.Text = news[i].Text
 
-		resp.News = append(resp.News, respElem)
+		resp.News = append(resp.News, &respElem)
 	}
 
 	return resp, nil

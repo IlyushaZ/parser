@@ -22,13 +22,13 @@ type NewsRepository interface {
 }
 
 type NewsCache interface {
-	Exists(string, int) (bool, error)
-	Add(string, int) error
+	Exists(string, int32) (bool, error)
+	Add(string, int32) error
 }
 
 type Task struct {
 	url, titlePattern, textPattern string
-	websiteID                      int
+	websiteID                      int32
 }
 
 type Processor struct {

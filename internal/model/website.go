@@ -5,7 +5,7 @@ import "time"
 const processAtFrequency = 5 * time.Minute
 
 type Website struct {
-	ID           int       `db:"id"`
+	ID           int32     `db:"id"`
 	MainURL      string    `db:"main_url"`
 	URLPattern   string    `db:"url_pattern"`
 	TitlePattern string    `db:"title_pattern"`

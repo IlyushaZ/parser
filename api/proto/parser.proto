@@ -33,7 +33,7 @@ message SearchNewsRequest {
 
 message NewsResponse {
   message News {
-    int64 id = 1;
+    int32 id = 1;
     string url = 2;
     string title = 3;
     string text = 4;
